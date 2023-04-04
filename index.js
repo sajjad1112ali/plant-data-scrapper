@@ -1,5 +1,5 @@
 const puppeteer = require("puppeteer");
-const { Parser } = require('json2csv');
+const { Parser } = require("json2csv");
 const fs = require("fs/promises");
 
 (async () => {
@@ -10,25 +10,30 @@ const fs = require("fs/promises");
       userDataDir: "./temp",
     });
     // Create a page
-    const page = await browser.newPage();
+    const mainPage = await browser.newPage();
     // Go to your site
-    await page.goto(
-      "http://www.theplantlist.org/1.1/browse/"
+    await mainPage.goto("http://www.theplantlist.org/1.1/browse/");
+    const majorGroups = await mainPage.$$eval("#nametree > li > a", (group) =>
+      group.map((g) => ({ name: g.innerText, url: g.href }))
     );
-   const majorGroups = await page.$$('#nametree > li > a');
-   majorGroups[0].click();
-   await page.waitForNavigation();
+    for (let g of majorGroups) {
+      const page = await browser.newPage();
+      page.goto(g.url);
+      await page.waitForNavigation();
+      const h1Tags = await page.$$eval("h1", (h1s) =>
+        h1s.map((h1) => h1.innerText)
+      );
+      const plantType = h1Tags[1];
+      const familyNames = await page.$$eval(
+        "#nametree > li > a > i",
+        (family) => family.map((f) => ({ "Family Name": f.innerText }))
+      );
+      const parser = new Parser();
+      const csv = parser.parse(familyNames);
+      await fs.writeFile(`./downloads/${plantType}.csv`, csv);
+    }
 
-   const h1Tags = await page.$$eval('h1', h1s => h1s.map(h1 => h1.innerText));
-   const plantType = h1Tags[1];
-   const familyNames = await page.$$eval('#nametree > li > a > i', family => family.map(f => ({ "Family Name": f.innerText })));
-
-   const parser = new Parser();
-   const csv = parser.parse(familyNames);
-   await fs.writeFile(`./downloads/${plantType}.csv`, csv);
-   debugger;
-
-    // await browser.close();
+    await browser.close();
   } catch (error) {
     console.log(error);
   }
