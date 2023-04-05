@@ -9,9 +9,7 @@ const fs = require("fs/promises");
       defaultViewport: false,
       userDataDir: "./temp",
     });
-    // Create a page
     const mainPage = await browser.newPage();
-    // Go to your site
     await mainPage.goto("http://www.theplantlist.org/1.1/browse/");
     const majorGroups = await mainPage.$$eval("#nametree > li > a", (group) =>
       group.map((g) => ({ name: g.innerText, url: g.href }))
